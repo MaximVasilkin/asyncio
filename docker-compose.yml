@@ -1,0 +1,26 @@
+version: '3.9'
+
+volumes:
+  swapi_data:
+
+networks:
+  backend:
+
+services:
+  async:
+    build: .
+    env_file:
+      - env
+    depends_on:
+      - postgresql_db
+    networks:
+      - backend
+
+  postgresql_db:
+    image: 'postgres:12'
+    env_file:
+      - env
+    volumes:
+      - swapi_data:/var/lib/postgresql/data
+    networks:
+      - backend

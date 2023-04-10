@@ -2,10 +2,7 @@ from asyncio import run, gather, create_task, all_tasks, current_task
 from aiohttp import ClientSession
 from math import ceil
 from work_with_db import paste_to_db
-from loop_policy import check_loop_policy
 
-
-check_loop_policy()
 
 URL = 'https://swapi.dev/api/people/'
 
@@ -75,8 +72,8 @@ async def get_persons_from_page(client, page: int):
 async def get_all_persons():
     async with ClientSession() as client:
         for page in range(1, MAX_PAGE_COUNT + 1):
-            persons = await get_persons_from_page(client, page)
-            paste_to_db_coroutine = paste_to_db(persons)
+            persons_coro = get_persons_from_page(client, page)
+            paste_to_db_coroutine = paste_to_db(persons_coro)
             create_task(paste_to_db_coroutine)
         tasks = all_tasks() - {current_task(), }
         for task in tasks:
