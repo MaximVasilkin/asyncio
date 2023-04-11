@@ -12,15 +12,31 @@ services:
     env_file:
       - env
     depends_on:
-      - postgresql_db
+      postgresql_db:
+        condition: service_healthy
     networks:
       - backend
 
   postgresql_db:
-    image: 'postgres:12'
+    image: 'postgres:12-alpine'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 3s
     env_file:
       - env
     volumes:
       - swapi_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  dbeaver:
+    image: dbeaver/cloudbeaver:latest
+    ports:
+      - 9882:8978
+    depends_on:
+      - postgresql_db
     networks:
       - backend
