@@ -2,6 +2,7 @@ from asyncio import run, gather, create_task, all_tasks, current_task
 from aiohttp import ClientSession
 from math import ceil
 from work_with_db import paste_to_db
+from datetime import datetime
 
 
 URL = 'https://swapi.dev/api/people/'
@@ -16,13 +17,8 @@ async def get_json(client, *args, **kwargs):
 async def get_page_meta():
     async with ClientSession() as client:
         info = await get_json(client, URL)
-        persons_on_page = len(info['results'])
         all_persons_num = info['count']
-        max_page_num = ceil(all_persons_num / persons_on_page)
-        return max_page_num, persons_on_page
-
-
-MAX_PAGE_COUNT, PERSONS_ON_PAGE = run(get_page_meta())
+        return all_persons_num
 
 
 async def get_listed_data(client, field: str, *links):
@@ -34,7 +30,12 @@ async def get_listed_data(client, field: str, *links):
     return data
 
 
-async def get_person_data(client, person, id_):
+async def get_person_and_paste_to_db(client, id_):
+    url = f'{URL}{id_}'
+    person = await get_json(client, url)
+
+    if 'detail' in person:
+        return
 
     extra_data = await gather(get_listed_data(client, 'name', person['homeworld']),
                               get_listed_data(client, 'title', *person['films']),
@@ -57,28 +58,22 @@ async def get_person_data(client, person, id_):
                        starships=extra_data[3],
                        vehicles=extra_data[4])
 
-    return person_data
-
-
-async def get_persons_from_page(client, page: int):
-    params = {'page': page}
-    start_position = (page * PERSONS_ON_PAGE) - (PERSONS_ON_PAGE - 1)
-    response = await get_json(client, URL, params=params)
-    persons = [await get_person_data(client, person, id_) for id_, person in enumerate(response['results'],
-                                                                                       start=start_position)]
-    return persons
+    await paste_to_db(person_data)
 
 
 async def get_all_persons():
     async with ClientSession() as client:
-        for page in range(1, MAX_PAGE_COUNT + 1):
-            persons_coro = get_persons_from_page(client, page)
-            paste_to_db_coroutine = paste_to_db(persons_coro)
-            create_task(paste_to_db_coroutine)
+        all_persons_num = await get_page_meta()
+        for person_id in range(1, all_persons_num + 2):
+            person_coro = get_person_and_paste_to_db(client, person_id)
+            create_task(person_coro)
         tasks = all_tasks() - {current_task(), }
         for task in tasks:
             await task
 
 
 if __name__ == '__main__':
+    start = datetime.now()
     run(get_all_persons())
+    end = datetime.now()
+    print(end - start)

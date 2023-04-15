@@ -15,11 +15,10 @@ engine = create_async_engine(DSN)
 Session = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def paste_to_db(list_of_jsons_coro):
-    list_of_jsons = await list_of_jsons_coro
+async def paste_to_db(person_json):
     async with Session() as session:
-        persons_objects = [SwapiPerson(**json_) for json_ in list_of_jsons]
-        session.add_all(persons_objects)
+        person_object = SwapiPerson(**person_json)
+        session.add(person_object)
         await session.commit()
 
 
