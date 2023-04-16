@@ -1,13 +1,14 @@
 from asyncio import run, gather, create_task, all_tasks, current_task
 from aiohttp import ClientSession
-from math import ceil
 from work_with_db import paste_to_db
 from datetime import datetime
+from async_lru import alru_cache
 
 
 URL = 'https://swapi.dev/api/people/'
 
 
+@alru_cache
 async def get_json(client, *args, **kwargs):
     response = await client.get(*args, **kwargs)
     json_ = await response.json()
@@ -21,6 +22,7 @@ async def get_page_meta():
         return all_persons_num
 
 
+@alru_cache
 async def get_listed_data(client, field: str, *links):
     if not links:
         return
